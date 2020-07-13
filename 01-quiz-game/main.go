@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 type problem struct {
@@ -17,6 +18,7 @@ func main() {
 	// The `flag` package defines flags that can be provided when running a program through the command line
 	// All the flags can be displayed running the program with the -h flag
 	csvFilename := flag.String("csv", "problems.csv", "a csv file in the format of 'question,answer'")
+	timeLimit := flag.Int("limit", 30, "the time limit for the quiz in seconds")
 
 	// Takes all the provided flags and parses them
 	flag.Parse()
@@ -37,17 +39,37 @@ func main() {
 	problems := parseLines(lines)
 	correct := 0
 
+	// Creates a timer that fires on a channel after a set amount of time
+	timer := time.NewTimer(time.Duration(*timeLimit) * time.Second)
+
+	// `ProblemLoop` is a label that allows us to terminate the associated loop directly
+ProblemLoop:
 	for idx, problem := range problems {
 		fmt.Printf("Problem #%d: %s = \n", idx+1, problem.q)
 
-		var answer string
+		// Creates a channel of strings used to communicate between goroutines
+		answerChan := make(chan string)
 
-		// Takes input from the keyboard while the program is running and saves it to the memory location of `answer`
-		// Scanf is not always ideal as it trims the input and generally can lead to all sorts of problems
-		fmt.Scanf("%s\n", &answer)
+		// Creates an anonymous function and runs it as a goroutine
+		// Since it uses variables outside of its scope (`answerChan`), this is technically a closure
+		go func() {
+			var answer string
 
-		if answer == problem.a {
-			correct++
+			// Takes input from the keyboard while the program is running and saves it to the memory location of `answer`
+			// Scanf is not always ideal as it trims the input and generally can lead to all sorts of problems
+			fmt.Scanf("%s\n", &answer)
+
+			// Sends the answer through the channel
+			answerChan <- answer
+		}()
+
+		select {
+		case <-timer.C:
+			break ProblemLoop
+		case answer := <-answerChan:
+			if answer == problem.a {
+				correct++
+			}
 		}
 	}
 

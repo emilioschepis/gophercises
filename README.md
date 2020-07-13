@@ -6,7 +6,7 @@ The exercises are presented as a set of projects and are useful to get familiar 
 
 ## Progress
 
-1. [ ] Quiz Game
+1. [X] Quiz Game
 1. [ ] URL Shortener
 1. [ ] Choose Your Own Adventure
 1. [ ] HTML Link Parser
