@@ -38,12 +38,32 @@ func WithTemplate(t *template.Template) HandlerOption {
 	}
 }
 
+// WithPathFunc is...
+func WithPathFunc(fn func(r *http.Request) string) HandlerOption {
+	return func(h *handler) {
+		h.pathFn = fn
+	}
+}
+
 type handler struct {
-	s Story
-	t *template.Template
+	s      Story
+	t      *template.Template
+	pathFn func(r *http.Request) string
 }
 
 var tpl *template.Template
+
+func defaultPathFn(r *http.Request) string {
+	path := strings.TrimSpace(r.URL.Path)
+	if path == "" || path == "/" {
+		path = "/intro"
+	}
+
+	// This removes the / prefix from the path
+	// The operation is safe because if the path was empty it would
+	// already have been replaced by "/intro"
+	return path[1:]
+}
 
 var defaultHandlerTpl = `
 <!DOCTYPE html>
@@ -125,7 +145,7 @@ func init() {
 func NewHandler(s Story, opts ...HandlerOption) http.Handler {
 	// A Story is required, all other settings are dynamic
 	// This starts with the default template
-	h := handler{s, tpl}
+	h := handler{s, tpl, defaultPathFn}
 	for _, opt := range opts {
 		// Apply the option to the memory address of the handler
 		opt(&h)
@@ -145,15 +165,7 @@ func JSONStory(r io.Reader) (Story, error) {
 
 // This makes it so that our `handler` conforms to `http.Handler`
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimSpace((r.URL.Path))
-	if path == "" || path == "/" {
-		path = "/intro"
-	}
-
-	// This removes the / prefix from the path
-	// The operation is safe because if the path was empty it would
-	// already have been replaced by "/intro"
-	path = path[1:]
+	path := h.pathFn(r)
 
 	if chapter, ok := h.s[path]; ok {
 		err := h.t.Execute(w, chapter)

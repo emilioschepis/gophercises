@@ -28,10 +28,14 @@ func main() {
 	}
 
 	// We can pass dynamic options!
-	h := cyoa.NewHandler(story /*, cyoa.WithTemplate(nil)*/)
+	h := cyoa.NewHandler(story /*, cyoa.WithTemplate(nil), cyoa.WithPathFunc(...)*/)
+	// With the `Mux` we automatically get 404 pages and more
+	mux := http.NewServeMux()
+	mux.Handle("/", h)
+
 	fmt.Printf("Starting the server on port: %d\n", *port)
 
 	// The HTTP server should always be kept alive
 	// If it returns for some reason, the reason will be automatically logged
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), h))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), mux))
 }

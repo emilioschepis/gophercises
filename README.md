@@ -8,7 +8,7 @@ The exercises are presented as a set of projects and are useful to get familiar 
 
 1. [X] Quiz Game
 1. [X] URL Shortener
-1. [ ] Choose Your Own Adventure
+1. [X] Choose Your Own Adventure
 1. [ ] HTML Link Parser
 1. [ ] Sitemap Builder
 1. [ ] Hacker Rank Problem
