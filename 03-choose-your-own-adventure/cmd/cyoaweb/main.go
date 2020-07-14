@@ -27,7 +27,8 @@ func main() {
 		panic(err)
 	}
 
-	h := cyoa.NewHandler(story, nil)
+	// We can pass dynamic options!
+	h := cyoa.NewHandler(story /*, cyoa.WithTemplate(nil)*/)
 	fmt.Printf("Starting the server on port: %d\n", *port)
 
 	// The HTTP server should always be kept alive

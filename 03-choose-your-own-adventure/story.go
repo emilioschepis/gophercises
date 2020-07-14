@@ -25,6 +25,19 @@ type Option struct {
 	Chapter string `json:"arc"`
 }
 
+// HandlerOption is...
+// This pattern is called functional options, and it allows us
+// to create functions to modify something dynamically
+// This reminds me of the builder pattern on Android
+type HandlerOption func(h *handler)
+
+// WithTemplate is...
+func WithTemplate(t *template.Template) HandlerOption {
+	return func(h *handler) {
+		h.t = t
+	}
+}
+
 type handler struct {
 	s Story
 	t *template.Template
@@ -109,12 +122,15 @@ func init() {
 // NewHandler is...
 // We return a generic `http.Handler` and not our `handler` struct
 // to make this more generic and inherit all the docs of `http.Handler`
-func NewHandler(s Story, t *template.Template) http.Handler {
-	if t == nil {
-		t = tpl
+func NewHandler(s Story, opts ...HandlerOption) http.Handler {
+	// A Story is required, all other settings are dynamic
+	// This starts with the default template
+	h := handler{s, tpl}
+	for _, opt := range opts {
+		// Apply the option to the memory address of the handler
+		opt(&h)
 	}
-
-	return handler{s, t}
+	return h
 }
 
 // JSONStory is...
@@ -140,7 +156,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path = path[1:]
 
 	if chapter, ok := h.s[path]; ok {
-		err := tpl.Execute(w, chapter)
+		err := h.t.Execute(w, chapter)
 		if err != nil {
 			log.Printf("%v", err)
 			http.Error(w, "Something went wrong...", http.StatusInternalServerError)
