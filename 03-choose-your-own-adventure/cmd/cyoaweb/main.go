@@ -4,12 +4,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 
 	cyoa "github.com/emilioschepis/gophercises/03-choose-your-own-adventure"
 )
 
 func main() {
+	port := flag.Int("port", 3000, "the port to start the CYOA web application on")
 	filename := flag.String("file", "gopher.json", "the JSON file with the CYOA story")
 	flag.Parse()
 
@@ -19,10 +22,15 @@ func main() {
 		panic(err)
 	}
 
-	story, err := cyoa.JsonStory(file)
+	story, err := cyoa.JSONStory(file)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("%+v\n", story)
+	h := cyoa.NewHandler(story)
+	fmt.Printf("Starting the server on port: %d\n", *port)
+
+	// The HTTP server should always be kept alive
+	// If it returns for some reason, the reason will be automatically logged
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), h))
 }

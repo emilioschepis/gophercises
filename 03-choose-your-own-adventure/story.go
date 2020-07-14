@@ -2,7 +2,9 @@ package cyoa
 
 import (
 	"encoding/json"
+	"html/template"
 	"io"
+	"net/http"
 )
 
 // Story is the adventure
@@ -21,11 +23,61 @@ type Option struct {
 	Chapter string `json:"arc"`
 }
 
-func JsonStory(r io.Reader) (Story, error) {
+type handler struct {
+	s Story
+}
+
+var defaultHandlerTpl = `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Choose Your Own Adventure</title>
+</head>
+
+<body>
+  <!-- This refers to the "Title" property of cyoa.Story -->
+  <h1>{{.Title}}</h1>
+  <!-- This ranges through the paragraphs of the story -->
+  {{range .Paragraphs}}
+  <!-- Each paragraph is assigned to "." -->
+  <p>{{.}}</p>
+  {{end}}
+  <ul>
+    {{range .Options}}
+    <li><a href="/{{.Chapter}}">{{.Text}}</a></li>
+    {{end}}
+  </ul>
+</body>
+
+</html>
+`
+
+// NewHandler is...
+// We return a generic `http.Handler` and not our `handler` struct
+// to make this more generic and inherit all the docs of `http.Handler`
+func NewHandler(s Story) http.Handler {
+	return handler{s}
+}
+
+// JSONStory is...
+func JSONStory(r io.Reader) (Story, error) {
 	decoder := json.NewDecoder(r)
 	var story Story
 	if err := decoder.Decode(&story); err != nil {
 		return nil, err
 	}
 	return story, nil
+}
+
+// This makes it so that our `handler` conforms to `http.Handler`
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	tpl := template.Must(template.New("").Parse(defaultHandlerTpl))
+
+	err := tpl.Execute(w, h.s["intro"])
+	if err != nil {
+		panic(err)
+	}
 }
