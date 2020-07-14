@@ -27,7 +27,10 @@ type Option struct {
 
 type handler struct {
 	s Story
+	t *template.Template
 }
+
+var tpl *template.Template
 
 var defaultHandlerTpl = `
 <!DOCTYPE html>
@@ -99,11 +102,19 @@ var defaultHandlerTpl = `
 </html>
 `
 
+func init() {
+	tpl = template.Must(template.New("").Parse(defaultHandlerTpl))
+}
+
 // NewHandler is...
 // We return a generic `http.Handler` and not our `handler` struct
 // to make this more generic and inherit all the docs of `http.Handler`
-func NewHandler(s Story) http.Handler {
-	return handler{s}
+func NewHandler(s Story, t *template.Template) http.Handler {
+	if t == nil {
+		t = tpl
+	}
+
+	return handler{s, t}
 }
 
 // JSONStory is...
@@ -129,7 +140,6 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path = path[1:]
 
 	if chapter, ok := h.s[path]; ok {
-		tpl := template.Must(template.New("").Parse(defaultHandlerTpl))
 		err := tpl.Execute(w, chapter)
 		if err != nil {
 			log.Printf("%v", err)
