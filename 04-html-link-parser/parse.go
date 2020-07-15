@@ -20,22 +20,28 @@ func Parse(r io.Reader) ([]Link, error) {
 		return nil, err
 	}
 
-	dfs(doc, "")
+	nodes := linkNodes(doc)
+	for _, node := range nodes {
+		fmt.Println(node)
+	}
 
 	return nil, nil
 }
 
-func dfs(n *html.Node, padding string) {
-	msg := n.Data
-	if n.Type == html.ElementNode {
-		msg = "<" + msg + ">"
+func linkNodes(n *html.Node) []*html.Node {
+	if n.Type == html.ElementNode && n.Data == "a" {
+		// If the passed element is an anchor, return it directly.
+		return []*html.Node{n}
 	}
 
-	fmt.Println(padding, msg)
-
+	var ret []*html.Node
 	// This is just a normal for loop, the third part simply instructs the loop on
 	// what to do after each iteration (select the next sibling node).
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		dfs(c, padding+"  ")
+		// The linkNodes function returns a slice, so the ... (variadic) allows us to append each element separately.
+		// For example one slice with ten elements becomes ten different arguments for the function
+		ret = append(ret, linkNodes(c)...)
 	}
+
+	return ret
 }
