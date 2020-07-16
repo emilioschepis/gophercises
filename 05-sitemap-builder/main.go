@@ -1,15 +1,28 @@
 package main
 
 import (
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	link "github.com/emilioschepis/gophercises/04-html-link-parser"
 )
+
+const xmlns = "http://www.sitemaps.org/schemas/sitemap/0.9"
+
+type loc struct {
+	Value string `xml:"loc"`
+}
+
+type urlset struct {
+	Urls  []loc  `xml:"url"`
+	Xmlns string `xml:"xmlns,attr"`
+}
 
 func main() {
 	// Named urlFlag in order to avoid conflict with the url package
@@ -18,9 +31,21 @@ func main() {
 	flag.Parse()
 
 	pages := bfs(*urlFlag, *maxDepth)
-	for _, href := range pages {
-		fmt.Println(href)
+	found := urlset{
+		Xmlns: xmlns,
 	}
+	for _, page := range pages {
+		found.Urls = append(found.Urls, loc{page})
+	}
+
+	// Print the constant header of the XML package before the rest of the urlset
+	fmt.Print(xml.Header)
+	enc := xml.NewEncoder(os.Stdout)
+	enc.Indent("", "  ")
+	if err := enc.Encode(found); err != nil {
+		panic(err)
+	}
+	fmt.Println()
 }
 
 func bfs(urlStr string, maxDepth int) []string {
@@ -38,6 +63,11 @@ func bfs(urlStr string, maxDepth int) []string {
 		// When we are done with a given queue, we copy nq (next queue) into it and reinitialize nq.
 		q, nq = nq, make(map[string]struct{})
 
+		// Exit early if there are no more elements queued.
+		if len(q) == 0 {
+			break
+		}
+
 		// for key, value := ...
 		for url := range q {
 			// Ok tells us if `seen` has this key or not.
@@ -49,8 +79,10 @@ func bfs(urlStr string, maxDepth int) []string {
 			seen[url] = struct{}{}
 
 			for _, link := range get(url) {
-				// Add each found link to the `nq`.
-				nq[link] = struct{}{}
+				if _, ok := seen[link]; !ok {
+					// Add each found link to the `nq` if they are new.
+					nq[link] = struct{}{}
+				}
 			}
 		}
 	}
