@@ -2,9 +2,12 @@ package main
 
 import (
 	"flag"
-	"io"
+	"fmt"
 	"net/http"
-	"os"
+	"net/url"
+	"strings"
+
+	link "github.com/emilioschepis/gophercises/04-html-link-parser"
 )
 
 func main() {
@@ -18,9 +21,33 @@ func main() {
 	}
 	defer resp.Body.Close()
 
-	// Copy the result to stdout
-	_, err = io.Copy(os.Stdout, resp.Body)
+	links, err := link.Parse(resp.Body)
 	if err != nil {
 		panic(err)
+	}
+
+	reqURL := resp.Request.URL
+
+	// Create a fresh URL using only the scheme and the host (ignore trailing /, paths, etc.)
+	baseURL := &url.URL{
+		Scheme: reqURL.Scheme,
+		Host:   reqURL.Host,
+	}
+
+	var hrefs []string
+	for _, l := range links {
+		switch {
+		case strings.HasPrefix(l.Href, "/"):
+			hrefs = append(hrefs, baseURL.String()+l.Href)
+		case strings.HasPrefix(l.Href, "http"):
+			// This case obviously matches https too
+			hrefs = append(hrefs, l.Href)
+		default:
+			continue
+		}
+	}
+
+	for _, href := range hrefs {
+		fmt.Println(href)
 	}
 }
