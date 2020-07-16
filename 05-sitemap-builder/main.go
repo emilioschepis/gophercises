@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,16 +16,18 @@ func main() {
 	urlFlag := flag.String("url", "https://emilioschepis.com/", "the url that you want to build a sitemap for")
 	flag.Parse()
 
-	resp, err := http.Get(*urlFlag)
+	pages := get(*urlFlag)
+	for _, href := range pages {
+		fmt.Println(href)
+	}
+}
+
+func get(urlStr string) []string {
+	resp, err := http.Get(urlStr)
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
-
-	links, err := link.Parse(resp.Body)
-	if err != nil {
-		panic(err)
-	}
 
 	reqURL := resp.Request.URL
 
@@ -33,21 +36,47 @@ func main() {
 		Scheme: reqURL.Scheme,
 		Host:   reqURL.Host,
 	}
+	base := baseURL.String()
 
-	var hrefs []string
+	return filter(hrefs(resp.Body, base), withPrefix(base))
+}
+
+func hrefs(r io.Reader, base string) []string {
+	links, err := link.Parse(r)
+	if err != nil {
+		panic(err)
+	}
+
+	var ret []string
 	for _, l := range links {
 		switch {
 		case strings.HasPrefix(l.Href, "/"):
-			hrefs = append(hrefs, baseURL.String()+l.Href)
+			ret = append(ret, base+l.Href)
 		case strings.HasPrefix(l.Href, "http"):
 			// This case obviously matches https too
-			hrefs = append(hrefs, l.Href)
+			ret = append(ret, l.Href)
 		default:
 			continue
 		}
 	}
 
-	for _, href := range hrefs {
-		fmt.Println(href)
+	return ret
+}
+
+func filter(links []string, predicate func(string) bool) []string {
+	var ret []string
+
+	for _, link := range links {
+		if predicate(link) {
+			ret = append(ret, link)
+		}
+	}
+
+	return ret
+}
+
+func withPrefix(p string) func(string) bool {
+	return func(s string) bool {
+		return strings.HasPrefix(s, p)
 	}
 }
